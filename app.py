@@ -4,9 +4,10 @@ import pymongo
 import re
 from datetime import datetime
 import numpy as np
+from collections import defaultdict
 
 
-# client = pymongo.MongoClient("mongodb:27017")
+#client = pymongo.MongoClient("mongodb:27017")
 client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client["mybase"]
 meta = db["meta"]
@@ -24,6 +25,11 @@ def getImportId(change=True):
         meta.insert_one({"_id":"import_id", "value":0})
         importid = 0
     return importid
+
+
+def calculate_age(born):
+    today = datetime.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
 def isValidString(value):
@@ -100,16 +106,14 @@ class Imports(Resource):
         if not data:
             abort(400)
         # data = json.loads(data)
-        # logging.warning(data)
+        #TODO check for type
         real_data = {citizen["citizen_id"]:citizen for citizen in data.get("citizens", [])}
 
         if not real_data:
             abort(400)
-
         for key in real_data:
             if not isValid(real_data[key], real_data):
                 abort(400)
-
         cur_id = getImportId()
         collection = db[str(cur_id)]
         collection.insert_many(data["citizens"])
@@ -139,7 +143,7 @@ class Citizen(Resource):
             abort(400)
 
         data = request.json
-        print(data)
+        # TODO check for type
         if not data:
             abort(400)
 
@@ -183,7 +187,6 @@ class Birthdays(Resource):
 
         res = db[import_id].find({}, {"_id": False})
         real_data = {citizen["citizen_id"]:citizen for citizen in res}
-        print(real_data)
         months = {i:[] for i in range(1, 13)}
         for citizen_id in real_data:
             cur_months = [0]*12
@@ -202,8 +205,23 @@ class Birthdays(Resource):
 class Percentile(Resource):
 
     def get(self, import_id):
-        #TODO impolement percentile
-        abort(400)
+        if getImportId(change=False) < int(import_id) or int(import_id) < 0:
+            abort(400)
+
+        all_cititizen = db[import_id].find({}, {"town":1, "birth_date":1, "_id":0})
+        towns = defaultdict(list)
+        for citizen in all_cititizen:
+            towns[citizen["town"]].append(calculate_age(datetime.strptime(citizen["birth_date"], "%d.%m.%Y")))
+            # old = datetime.now() - datetime.strptime(citizen["birth_date"], "%d.%m.%Y")
+            # print(old.days / 365)
+            # towns[citizen["town"]].append(old.days / 365)
+
+        towns_percentile = []
+        for town in towns:
+            percentile = np.percentile(towns[town], [50, 75, 99], interpolation='linear')
+            percentile = np.around(percentile, 2)
+            towns_percentile.append({"town":town, "p50":percentile[0], "p75":percentile[1], "p99":percentile[2]})
+        return towns_percentile, 200
 
 
 

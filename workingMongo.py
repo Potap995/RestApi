@@ -1,15 +1,22 @@
 import pymongo
 from bson import ObjectId
+from collections import defaultdict
 
-client = pymongo.MongoClient("mongodb://localhost:27017")
-db = client["mybase"]
-meta = db["meta"]
-test = db["test"]
+# client = pymongo.MongoClient("mongodb://localhost:27017")
+# db = client["mybase"]
+# meta = db["meta"]
+# work = db["0"]
+#
+# dicttown = defaultdict(list)
+# for i in work.find({}, {"town":1, "birth_date":1, "_id":0}):
+#     dicttown[i["town"]].append(i["birth_date"])
+# print(dict(dicttown))
+from datetime import datetime
+print(datetime.now())
+
 
 # test.insert_one({"id":2, "rel" : [1, 2]})
 
-a = test.find_one({"id": 1})["rel"]
-print(a, type(a))
 # print(test[1])
 
 # def getImportId():
@@ -23,43 +30,7 @@ print(a, type(a))
 #     return importid
 #
 #
-data = {
-    "citizens": [
-        {
-            "citizen_id": 1,
-            "town": "Москва",
-            "street": "Льва Толстого",
-            "building": "16к7стр5",
-            "apartment": 7,
-            "name": "Иванов Иван Иванович",
-            "birth_date": "26.12.1986",
-            "gender": "male",
-            "relatives": [2]
-        },
-        {
-            "citizen_id": 2,
-            "town": "Москва",
-            "street": "Льва Толстого",
-            "building": "16к7стр5",
-            "apartment": 7,
-            "name": "Иванов Сергей Иванович",
-            "birth_date": "01.04.1997",
-            "gender": "male",
-            "relatives": [1]
-        },
-        {
-            "citizen_id": 3,
-            "town": "Керчь",
-            "street": "Иосифа Бродского",
-            "building": "2",
-            "apartment": 11,
-            "name": "Романова Мария Леонидовна",
-            "birth_date": "23.11.1986",
-            "gender": "female",
-            "relatives": []
-        }
-    ]
-}
+
 # #
 # # a = table.insert_one(data)
 # #

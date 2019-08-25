@@ -1,4 +1,5 @@
 import requests
+import json
 
 url = 'http://localhost:8081/imports'
 headers = {'Content-Type': 'application/json'}
@@ -27,7 +28,7 @@ body = """{
       "birth_date": "01.04.1997",
       "gender": "male",
       "relatives": [
-        1
+        1, 4
       ]
     },
     {
