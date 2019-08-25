@@ -7,8 +7,8 @@ from datetime import datetime
 import numpy as np
 
 
-client = pymongo.MongoClient("mongodb:27017")
-# client = pymongo.MongoClient("mongodb://localhost:27017")
+# client = pymongo.MongoClient("mongodb:27017")
+client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client["mybase"]
 meta = db["meta"]
 FIELDS = ("citizen_id", "town", "street", "building", "apartment", "name", "birth_date", "gender", "relatives")
@@ -96,7 +96,6 @@ class Imports(Resource):
 
     def post(self):
         data = request.json #check data
-        logging.warning(data)
         if not data:
             abort(400)
         # data = json.loads(data)
@@ -106,7 +105,6 @@ class Imports(Resource):
         if not real_data:
             abort(400)
 
-        logging.warning(real_data)
         for key in real_data:
             if not isValid(real_data[key], real_data):
                 abort(400)
@@ -116,7 +114,6 @@ class Imports(Resource):
         try:
             collection.insert_many(data["citizens"])
         except Exception as e:
-            logging.warning(e)
             abort(400)
         res = {
             "data": {
@@ -139,6 +136,7 @@ class Citizens(Resource):
 class Citizen(Resource):
 
     def patch(self, import_id, citizen_id):
+        citizen_id = int(citizen_id)
         if getImportId(change=False) < int(import_id) or int(import_id) < 0:
             abort(400)
 
@@ -150,21 +148,30 @@ class Citizen(Resource):
         if isValid(data, [], True):
             abort(400)
 
-        res = db[import_id].find_and_modify({"citizen_id":citizen_id}, {"$set": data})
+        cur_db = db[import_id]
+        res = cur_db.find_one({"citizen_id":citizen_id})
+        if not res:
+            abort(400)
         del res["_id"]
+
         if "relatives" in data:
             to_unlink = set(res["relatives"]) - set(data["relatives"])
             to_link = set(data["relatives"]) - set(res["relatives"])
+            for new_link in to_link:
+                if not cur_db.find_one({"citizen_id":new_link}):
+                    abort(400)
             #TODO check for nonexistent citizens
             for relative_id in to_unlink:
-                cur = db[import_id].find_one({"citizen_id": relative_id})["relatives"]
+                cur = cur_db.find_one({"citizen_id": relative_id})["relatives"]
                 cur.remove(citizen_id)
-                db[import_id].update_one({"citizen_id": relative_id}, {"$set": {"relatives":cur}})
+                cur_db.update_one({"citizen_id": relative_id}, {"$set": {"relatives":cur}})
 
             for relative_id in to_link:
-                cur = db[import_id].find_one({"citizen_id": relative_id})["relatives"]
+                cur = cur_db.find_one({"citizen_id": relative_id})["relatives"]
                 cur.append(citizen_id)
-                db[import_id].update_one({"citizen_id": relative_id}, {"$set": {"relatives":cur}})
+                cur_db.update_one({"citizen_id": relative_id}, {"$set": {"relatives":cur}})
+
+        cur_db.update_one({"citizen_id": citizen_id}, {"$set": data})
         res.update(data)
         ret = {"data": res}
         return ret, 200
