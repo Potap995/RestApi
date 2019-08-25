@@ -1,11 +1,11 @@
-from flask import Flask,    request, abort
+from flask import Flask, request, abort, jsonify
 from flask_restful import Api, Resource
 import pymongo
 import re
 from datetime import datetime
 import numpy as np
 from collections import defaultdict
-from dateutil.tz import tzutc, tzlocal
+import json
 
 
 client = pymongo.MongoClient("mongodb:27017")
@@ -103,11 +103,9 @@ api = Api(application)
 class Imports(Resource):
 
     def post(self):
-        data = request.json #check data
-        if not data:
+        data = request.json
+        if not data or not isinstance(data, dict):
             abort(400)
-        # data = json.loads(data)
-        #TODO check for type
         real_data = {citizen["citizen_id"]:citizen for citizen in data.get("citizens", [])}
 
         if not real_data:
@@ -118,12 +116,13 @@ class Imports(Resource):
         cur_id = getImportId()
         collection = db[str(cur_id)]
         collection.insert_many(data["citizens"])
-        res = {
+        ret = {
             "data": {
                 "import_id": cur_id
             }
         }
-        return res, 201
+        # return json.dumps(ret, ensure_ascii=False, indent=2,separators=(',', ': ')), 201
+        return ret, 201
 
 
 class Citizens(Resource):
@@ -133,6 +132,8 @@ class Citizens(Resource):
             abort(400)
         res = db[import_id].find({}, {"_id":False})
         ret = {"data": [i for i in res]}
+
+        # return json.dumps(ret, ensure_ascii=False, indent=2,separators=(',', ': ')), 200
         return ret, 200
 
 
@@ -144,8 +145,7 @@ class Citizen(Resource):
             abort(400)
 
         data = request.json
-        # TODO check for type
-        if not data:
+        if not data or not isinstance(data, dict):
             abort(400)
 
         if isValid(data, [], patch=True):
@@ -177,6 +177,8 @@ class Citizen(Resource):
         cur_db.update_one({"citizen_id": citizen_id}, {"$set": data})
         res.update(data)
         ret = {"data": res}
+
+        # return json.dumps(ret, ensure_ascii=False, indent=2,separators=(',', ': ')), 200
         return ret, 200
 
 
@@ -192,7 +194,7 @@ class Birthdays(Resource):
         for citizen_id in real_data:
             cur_months = [0]*12
             for relative_id in real_data[citizen_id]["relatives"]:
-                month = datetime.strptime(real_data[relative_id]["birth_date"], "%d.%m.%Y").month #may be uncorrect
+                month = datetime.strptime(real_data[relative_id]["birth_date"], "%d.%m.%Y").month
                 cur_months[month-1] += 1
             for month in range(12):
                 if cur_months[month] > 0:
@@ -200,6 +202,7 @@ class Birthdays(Resource):
 
         ret = {"data": months}
 
+        # return json.dumps(ret, ensure_ascii=False, indent=2,separators=(',', ': ')), 200
         return ret, 200
 
 
@@ -219,6 +222,8 @@ class Percentile(Resource):
             percentile = np.percentile(towns[town], [50, 75, 99], interpolation='linear')
             percentile = np.around(percentile, 2)
             towns_percentile.append({"town":town, "p50":percentile[0], "p75":percentile[1], "p99":percentile[2]})
+
+        # return json.dumps(towns_percentile, ensure_ascii=False, indent=2,separators=(',', ': ')), 200
         return towns_percentile, 200
 
 

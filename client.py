@@ -1,9 +1,9 @@
 import requests
 import json
 
-url = 'http://localhost:8081/imports'
+url = 'http://localhost:8080/imports'
 headers = {'Content-Type': 'application/json'}
-body = """{
+body_post = """{
   "citizens": [
     {
       "citizen_id": 1,
@@ -56,8 +56,50 @@ body = """{
   ]
 }"""
 
-req = requests.post(url, headers=headers, data=body.encode('utf-8'))
+req = requests.post(url, headers=headers, data=body_post.encode('utf-8'))
 
 print(req.status_code)
 print(req.headers)
 print(req.text)
+print("-"*20)
+
+
+req = requests.get(url + "/0/citizens")
+
+print(req.status_code)
+print(req.headers)
+print(req.text)
+print("-"*20)
+
+
+body_patch = """{
+"name": "Иванова Мария Леонидовна",
+"town": "Москва",
+"street": "Льва Толстого",
+"building": "16к7стр5",
+"apartment": 7,
+"relatives": [1]
+}
+"""
+
+
+req = requests.patch(url + "/0/citizens/3", headers=headers, data=body_patch.encode('utf-8'))
+
+print(req.status_code)
+print(req.headers)
+print(req.text)
+print("-"*20)
+
+req = requests.get(url + "/0/citizens/birthdays")
+
+print(req.status_code)
+print(req.headers)
+print(req.text)
+print("-"*20)
+
+req = requests.get(url + "/0/towns/stat/percentile/age")
+
+print(req.status_code)
+print(req.headers)
+print(req.text)
+
