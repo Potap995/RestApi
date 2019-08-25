@@ -1,14 +1,15 @@
-from flask import Flask, jsonify, request, abort
+from flask import Flask,    request, abort
 from flask_restful import Api, Resource
 import pymongo
 import re
 from datetime import datetime
 import numpy as np
 from collections import defaultdict
+from dateutil.tz import tzutc, tzlocal
 
 
-#client = pymongo.MongoClient("mongodb:27017")
-client = pymongo.MongoClient("mongodb://localhost:27017")
+client = pymongo.MongoClient("mongodb:27017")
+# client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client["mybase"]
 meta = db["meta"]
 FIELDS = ("citizen_id", "town", "street", "building", "apartment", "name", "birth_date", "gender", "relatives")
@@ -28,7 +29,7 @@ def getImportId(change=True):
 
 
 def calculate_age(born):
-    today = datetime.today()
+    today = datetime.utcnow()
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
@@ -95,8 +96,8 @@ def isValid(citizen, citizens, patch=False):
     return True
 
 
-app = Flask(__name__)
-api = Api(app)
+application = Flask(__name__)
+api = Api(application)
 
 
 class Imports(Resource):
@@ -147,7 +148,7 @@ class Citizen(Resource):
         if not data:
             abort(400)
 
-        if isValid(data, [], True):
+        if isValid(data, [], patch=True):
             abort(400)
 
         cur_db = db[import_id]
@@ -212,9 +213,6 @@ class Percentile(Resource):
         towns = defaultdict(list)
         for citizen in all_cititizen:
             towns[citizen["town"]].append(calculate_age(datetime.strptime(citizen["birth_date"], "%d.%m.%Y")))
-            # old = datetime.now() - datetime.strptime(citizen["birth_date"], "%d.%m.%Y")
-            # print(old.days / 365)
-            # towns[citizen["town"]].append(old.days / 365)
 
         towns_percentile = []
         for town in towns:
@@ -233,4 +231,4 @@ api.add_resource(Birthdays, "/imports/<import_id>/citizens/birthdays")
 api.add_resource(Percentile, "/imports/<import_id>/towns/stat/percentile/age")
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8081, debug=True)
+    application.run(host="0.0.0.0", port=8080)
