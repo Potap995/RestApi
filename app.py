@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request, abort
 from flask_restful import Api, Resource
 import pymongo
-import logging
 import re
 from datetime import datetime
 import numpy as np
@@ -72,7 +71,9 @@ def isValid(citizen, citizens, patch=False):
 
         if field == "birth_date":
             try:
-                datetime.strptime(value, "%d.%m.%Y")
+                date = datetime.strptime(value, "%d.%m.%Y")
+                if datetime.now() < date:
+                    return False
             except:
                 return False
 
@@ -111,10 +112,7 @@ class Imports(Resource):
 
         cur_id = getImportId()
         collection = db[str(cur_id)]
-        try:
-            collection.insert_many(data["citizens"])
-        except Exception as e:
-            abort(400)
+        collection.insert_many(data["citizens"])
         res = {
             "data": {
                 "import_id": cur_id
@@ -160,7 +158,7 @@ class Citizen(Resource):
             for new_link in to_link:
                 if not cur_db.find_one({"citizen_id":new_link}):
                     abort(400)
-            #TODO check for nonexistent citizens
+
             for relative_id in to_unlink:
                 cur = cur_db.find_one({"citizen_id": relative_id})["relatives"]
                 cur.remove(citizen_id)
